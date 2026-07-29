@@ -1,0 +1,32 @@
+[21-Jun-2026 03:36:29 Asia/Jakarta] PHP Fatal error:  Uncaught ValueError: max(): Argument #1 ($value) must contain at least one element in /home/arsb3948/public_html/kka/src/views/dashboard/index.php:96
+Stack trace:
+#0 /home/arsb3948/public_html/kka/src/views/dashboard/index.php(96): max()
+#1 /home/arsb3948/public_html/kka/src/lib/Helpers.php(88): require('/home/arsb3948/...')
+#2 /home/arsb3948/public_html/kka/src/controllers/DashboardController.php(34): view()
+#3 /home/arsb3948/public_html/kka/public/index.php(71): DashboardController->index()
+#4 {main}
+  thrown in /home/arsb3948/public_html/kka/src/views/dashboard/index.php on line 96
+[21-Jun-2026 03:37:26 Asia/Jakarta] PHP Fatal error:  Uncaught ValueError: max(): Argument #1 ($value) must contain at least one element in /home/arsb3948/public_html/kka/src/views/dashboard/index.php:96
+Stack trace:
+#0 /home/arsb3948/public_html/kka/src/views/dashboard/index.php(96): max()
+#1 /home/arsb3948/public_html/kka/src/lib/Helpers.php(88): require('/home/arsb3948/...')
+#2 /home/arsb3948/public_html/kka/src/controllers/DashboardController.php(34): view()
+#3 /home/arsb3948/public_html/kka/public/index.php(71): DashboardController->index()
+#4 {main}
+  thrown in /home/arsb3948/public_html/kka/src/views/dashboard/index.php on line 96
+[21-Jun-2026 03:38:32 Asia/Jakarta] PHP Fatal error:  Uncaught ValueError: max(): Argument #1 ($value) must contain at least one element in /home/arsb3948/public_html/kka/src/views/dashboard/index.php:96
+Stack trace:
+#0 /home/arsb3948/public_html/kka/src/views/dashboard/index.php(96): max()
+#1 /home/arsb3948/public_html/kka/src/lib/Helpers.php(88): require('/home/arsb3948/...')
+#2 /home/arsb3948/public_html/kka/src/controllers/DashboardController.php(34): view()
+#3 /home/arsb3948/public_html/kka/public/index.php(71): DashboardController->index()
+#4 {main}
+  thrown in /home/arsb3948/public_html/kka/src/views/dashboard/index.php on line 96
+[21-Jun-2026 03:39:38 Asia/Jakarta] PHP Fatal error:  Uncaught ValueError: max(): Argument #1 ($value) must contain at least one element in /home/arsb3948/public_html/kka/src/views/dashboard/index.php:96
+Stack trace:
+#0 /home/arsb3948/public_html/kka/src/views/dashboard/index.php(96): max()
+#1 /home/arsb3948/public_html/kka/src/lib/Helpers.php(88): require('/home/arsb3948/...')
+#2 /home/arsb3948/public_html/kka/src/controllers/DashboardController.php(34): view()
+#3 /home/arsb3948/public_html/kka/public/index.php(71): DashboardController->index()
+#4 {main}
+  thrown in /home/arsb3948/public_html/kka/src/views/dashboard/index.php on line 96

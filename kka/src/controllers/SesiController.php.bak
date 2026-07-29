@@ -1,0 +1,211 @@
+<?php
+class SesiController {
+    private Auth $auth;
+    public function __construct(Auth $auth) { $this->auth = $auth; $auth->require(); }
+
+    public function index(): void {
+        $q       = trim((string) input('q', ''));
+        $tahun   = (int) input('tahun', 0);
+        $desaId  = (int) input('desa', 0);
+        $bidId   = (int) input('bidang', 0);
+
+        $where = '1=1'; $p = [];
+        if ($q !== '')   { $where .= ' AND (s.objek_audit LIKE ? OR s.no_kka LIKE ?)'; $p[] = "%$q%"; $p[] = "%$q%"; }
+        if ($tahun > 0)  { $where .= ' AND s.tahun_anggaran = ?'; $p[] = $tahun; }
+        if ($desaId > 0) { $where .= ' AND s.desa_id = ?'; $p[] = $desaId; }
+        if ($bidId > 0)  { $where .= ' AND s.bidang_id = ?'; $p[] = $bidId; }
+
+        // Isolasi data: auditor hanya melihat miliknya sendiri, admin melihat semua
+        [$ow, $op] = owner_where($this->auth);
+        $where .= $ow; $p = array_merge($p, $op);
+
+        $sesi = DB::all("
+            SELECT s.id, s.objek_audit, s.semester, s.tahun_anggaran, s.no_kka, s.dibuat_oleh, s.tanggal_dibuat,
+                   d.nama AS desa, b.nama AS bidang
+            FROM kka_sesi s
+            JOIN kka_desa d ON d.id = s.desa_id
+            JOIN kka_bidang b ON b.id = s.bidang_id
+            WHERE $where ORDER BY s.created_at DESC
+        ", $p);
+
+        $desa    = DB::all('SELECT id, nama FROM kka_desa ORDER BY nama');
+        $bidang  = DB::all('SELECT id, nama FROM kka_bidang ORDER BY urutan');
+        $tahuns  = DB::all("SELECT DISTINCT tahun_anggaran AS t FROM kka_sesi s WHERE 1=1 $ow ORDER BY t DESC", $op);
+
+        view('sesi/index', compact('sesi','desa','bidang','tahuns','q','tahun','desaId','bidId'));
+    }
+
+    public function create(): void {
+        $desa = DB::all('
+            SELECT d.id, CONCAT(d.nama, " — Kec. ", k.nama) AS nama
+            FROM kka_desa d JOIN kka_kecamatan k ON k.id=d.kecamatan_id
+            ORDER BY d.nama
+        ');
+        $bidang = DB::all('SELECT id, nama FROM kka_bidang ORDER BY urutan');
+        $auditors  = $this->auditorList();
+        $sharedIds = [];
+        $canShare  = true;
+        view('sesi/create', compact('desa','bidang','auditors','sharedIds','canShare'));
+    }
+
+    public function store(): void {
+        only_post(); csrf_check();
+        $data = [
+            'desa_id'        => (int) input('desa_id'),
+            'bidang_id'      => (int) input('bidang_id'),
+            'sub_bidang_id'  => ((int) input('sub_bidang_id')) ?: null,
+            'objek_audit'    => trim((string) input('objek_audit')),
+            'kegiatan'       => trim((string) input('kegiatan')) ?: null,
+            'pagu_anggaran'  => parse_money(input('pagu_anggaran', 0)),
+            'semester'       => (int) input('semester', 1),
+            'tahun_anggaran' => (int) input('tahun_anggaran', (int)date('Y')),
+            'no_kka'         => trim((string) input('no_kka')) ?: null,
+            'ref_kka'        => trim((string) input('ref_kka')) ?: null,
+            'dibuat_oleh'    => trim((string) input('dibuat_oleh')) ?: null,
+            'tanggal_dibuat' => input('tanggal_dibuat') ?: null,
+            'direview_oleh'  => trim((string) input('direview_oleh')) ?: null,
+            'tanggal_review' => input('tanggal_review') ?: null,
+            'dievaluasi_oleh'  => trim((string) input('dievaluasi_oleh')) ?: null,
+            'tanggal_evaluasi' => input('tanggal_evaluasi') ?: null,
+            'created_by'     => $this->auth->id(),
+        ];
+
+        if (!$data['desa_id'] || !$data['bidang_id'] || !$data['objek_audit']) {
+            flash('error', 'Desa, Bidang, dan Objek Audit wajib diisi.');
+            redirect('sesi/create');
+        }
+        $id = DB::insert('kka_sesi', $data);
+        $this->syncShares($id, (array) input('shared_users', []));
+        flash('success', 'Sesi audit dibuat. Sekarang silakan tambahkan rincian belanja.');
+        redirect('sesi/show?id=' . $id);
+    }
+
+    public function show(): void {
+        $id = (int) input('id');
+        $sesi = $this->loadSesi($id);
+        guard_sesi($this->auth, $sesi);
+
+        $rincian = DB::all('SELECT * FROM kka_rincian WHERE sesi_id = ? ORDER BY urutan, id', [$id]);
+        $lampiran = DB::all('SELECT * FROM kka_lampiran WHERE sesi_id = ? ORDER BY created_at DESC', [$id]);
+        $sharedWith = DB::all('SELECT u.nama, u.jabatan FROM kka_sesi_share sh
+                               JOIN kka_users u ON u.id = sh.user_id
+                               WHERE sh.sesi_id = ? ORDER BY u.nama', [$id]);
+
+        $totals = [
+            'pagu'      => (float) $sesi['pagu_anggaran'],
+            'dikwitansi'=> array_sum(array_column($rincian, 'biaya_dikwitansi')),
+            'realisasi' => array_sum(array_column($rincian, 'realisasi')),
+        ];
+        $totals['selisih'] = $totals['dikwitansi'] - $totals['realisasi'];
+
+        view('sesi/show', compact('sesi','rincian','lampiran','totals','sharedWith'));
+    }
+
+    public function edit(): void {
+        $id = (int) input('id');
+        $sesi = $this->loadSesi($id);
+        guard_sesi($this->auth, $sesi);
+        $desa = DB::all('SELECT d.id, CONCAT(d.nama, " — Kec. ", k.nama) AS nama
+                         FROM kka_desa d JOIN kka_kecamatan k ON k.id=d.kecamatan_id ORDER BY d.nama');
+        $bidang = DB::all('SELECT id, nama FROM kka_bidang ORDER BY urutan');
+        $subBidang = DB::all('SELECT id, nama FROM kka_sub_bidang WHERE bidang_id = ? ORDER BY nama', [$sesi['bidang_id']]);
+        $auditors  = $this->auditorList();
+        $sharedIds = array_map('intval', array_column(
+            DB::all('SELECT user_id FROM kka_sesi_share WHERE sesi_id = ?', [$sesi['id']]), 'user_id'));
+        $canShare  = $this->auth->isAdmin() || (int) $sesi['created_by'] === (int) $this->auth->id();
+        view('sesi/edit', compact('sesi','desa','bidang','subBidang','auditors','sharedIds','canShare'));
+    }
+
+    public function update(): void {
+        only_post(); csrf_check();
+        $id = (int) input('id');
+        $sesi = $this->loadSesi($id);
+        guard_sesi($this->auth, $sesi);
+        $data = [
+            'desa_id'        => (int) input('desa_id'),
+            'bidang_id'      => (int) input('bidang_id'),
+            'sub_bidang_id'  => ((int) input('sub_bidang_id')) ?: null,
+            'objek_audit'    => trim((string) input('objek_audit')),
+            'kegiatan'       => trim((string) input('kegiatan')) ?: null,
+            'pagu_anggaran'  => parse_money(input('pagu_anggaran', 0)),
+            'semester'       => (int) input('semester', 1),
+            'tahun_anggaran' => (int) input('tahun_anggaran', (int)date('Y')),
+            'no_kka'         => trim((string) input('no_kka')) ?: null,
+            'ref_kka'        => trim((string) input('ref_kka')) ?: null,
+            'dibuat_oleh'    => trim((string) input('dibuat_oleh')) ?: null,
+            'tanggal_dibuat' => input('tanggal_dibuat') ?: null,
+            'direview_oleh'  => trim((string) input('direview_oleh')) ?: null,
+            'tanggal_review' => input('tanggal_review') ?: null,
+            'dievaluasi_oleh'  => trim((string) input('dievaluasi_oleh')) ?: null,
+            'tanggal_evaluasi' => input('tanggal_evaluasi') ?: null,
+            'kesimpulan'     => trim((string) input('kesimpulan')) ?: null,
+            'sumber_data'    => trim((string) input('sumber_data')) ?: null,
+        ];
+        DB::update('kka_sesi', $data, ['id' => $id]);
+        // Hanya perbarui daftar berbagi bila form memang mengirim penanda 'manage_shares'
+        // (form Kesimpulan di halaman detail tidak mengirimnya, jadi berbagi tidak terhapus).
+        if (input('manage_shares') && ($this->auth->isAdmin() || (int) $sesi['created_by'] === (int) $this->auth->id())) {
+            $this->syncShares($id, (array) input('shared_users', []));
+        }
+        flash('success', 'Sesi audit diperbarui.');
+        redirect('sesi/show?id=' . $id);
+    }
+
+    public function delete(): void {
+        only_post(); csrf_check();
+        $id = (int) input('id');
+        $sesi = $this->loadSesi($id);
+        if (!$sesi) { flash('error','Sesi tidak ditemukan.'); redirect('sesi'); }
+        if (!$this->auth->isAdmin() && (int)$sesi['created_by'] !== $this->auth->id()) {
+            flash('error', 'Hanya admin atau pembuat yang dapat menghapus sesi ini.');
+            redirect('sesi');
+        }
+        // Hapus file lampiran fisik
+        $lamps = DB::all('SELECT nama_file FROM kka_lampiran WHERE sesi_id = ?', [$id]);
+        foreach ($lamps as $l) {
+            $p = $GLOBALS['cfg']['upload_dir'] . '/' . $l['nama_file'];
+            if (is_file($p)) @unlink($p);
+        }
+        DB::delete('kka_sesi', ['id' => $id]);
+        flash('success', 'Sesi audit dihapus.');
+        redirect('sesi');
+    }
+
+    public function subBidangJson(): void {
+        $bid = (int) input('bidang_id');
+        header('Content-Type: application/json');
+        echo json_encode(DB::all('SELECT id, nama FROM kka_sub_bidang WHERE bidang_id = ? ORDER BY nama', [$bid]));
+    }
+
+    /** Daftar auditor aktif (selain diri sendiri) untuk pilihan berbagi. */
+    private function auditorList(): array {
+        return DB::all(
+            "SELECT id, nama, jabatan FROM kka_users
+             WHERE role = 'auditor' AND is_active = 1 AND id <> ?
+             ORDER BY nama", [$this->auth->id()]);
+    }
+
+    /** Ganti total daftar auditor yang diberi akses ke sesi. */
+    private function syncShares(int $sesiId, array $userIds): void {
+        DB::q('DELETE FROM kka_sesi_share WHERE sesi_id = ?', [$sesiId]);
+        $selfId = (int) $this->auth->id();
+        $clean  = array_unique(array_filter(array_map('intval', $userIds)));
+        foreach ($clean as $uid) {
+            if ($uid === $selfId) continue; // pemilik tidak perlu di-share
+            $ok = DB::scalar("SELECT 1 FROM kka_users WHERE id = ? AND is_active = 1 AND role = 'auditor' LIMIT 1", [$uid]);
+            if ($ok) DB::q('INSERT INTO kka_sesi_share (sesi_id, user_id) VALUES (?, ?)', [$sesiId, $uid]);
+        }
+    }
+
+    private function loadSesi(int $id): ?array {
+        return DB::one('
+            SELECT s.*, d.nama AS desa_nama, k.nama AS kecamatan_nama,
+                   b.nama AS bidang_nama, sb.nama AS sub_bidang_nama
+            FROM kka_sesi s
+            JOIN kka_desa d ON d.id = s.desa_id
+            JOIN kka_kecamatan k ON k.id = d.kecamatan_id
+            JOIN kka_bidang b ON b.id = s.bidang_id
+            LEFT JOIN kka_sub_bidang sb ON sb.id = s.sub_bidang_id
+            WHERE s.id = ?', [$id]);
+    }
+}

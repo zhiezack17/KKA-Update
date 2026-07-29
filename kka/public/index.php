@@ -1,0 +1,72 @@
+<?php
+/**
+ * KKA - Front controller / router
+ * Inspektorat Kabupaten Rokan Hilir
+ */
+
+require_once __DIR__ . '/../src/bootstrap.php';
+
+// Tentukan route dari path setelah base
+$reqUri  = strtok($_SERVER['REQUEST_URI'] ?? '/', '?');
+$basePath = $GLOBALS['app_base_url'];
+$route   = '/' . ltrim(substr($reqUri, strlen($basePath)), '/');
+$route   = rtrim($route, '/');
+if ($route === '') $route = '/';
+
+// Routing manual sederhana
+// Format: [Controller, action]
+$routes = [
+    '/'                       => ['AuthController', 'home'],
+    '/login'                  => ['AuthController', 'login'],
+    '/logout'                 => ['AuthController', 'logout'],
+
+    '/dashboard'              => ['DashboardController', 'index'],
+
+    '/desa'                   => ['DesaController', 'index'],
+    '/desa/store'             => ['DesaController', 'store'],
+    '/desa/update'            => ['DesaController', 'update'],
+    '/desa/delete'            => ['DesaController', 'delete'],
+    '/kecamatan/store'        => ['DesaController', 'storeKec'],
+
+    '/sesi'                   => ['SesiController', 'index'],
+    '/sesi/create'            => ['SesiController', 'create'],
+    '/sesi/store'             => ['SesiController', 'store'],
+    '/sesi/show'              => ['SesiController', 'show'],
+    '/sesi/edit'              => ['SesiController', 'edit'],
+    '/sesi/update'            => ['SesiController', 'update'],
+    '/sesi/delete'            => ['SesiController', 'delete'],
+    '/sesi/sub-bidang'        => ['SesiController', 'subBidangJson'],
+
+    '/rincian/store'          => ['RincianController', 'store'],
+    '/rincian/update'         => ['RincianController', 'update'],
+    '/rincian/delete'         => ['RincianController', 'delete'],
+
+    '/lampiran/upload'        => ['LampiranController', 'upload'],
+    '/lampiran/delete'        => ['LampiranController', 'delete'],
+    '/lampiran/download'      => ['LampiranController', 'download'],
+
+    '/rekap'                  => ['RekapController', 'index'],
+    '/rekap/data'             => ['RekapController', 'data'],
+
+    '/print/sesi'             => ['PrintController', 'sesi'],
+    '/export/sesi'            => ['PrintController', 'exportExcel'],
+    '/export/rekap'           => ['PrintController', 'exportRekap'],
+
+    '/users'                  => ['UserController', 'index'],
+    '/users/store'            => ['UserController', 'store'],
+    '/users/update'           => ['UserController', 'update'],
+    '/users/delete'           => ['UserController', 'delete'],
+    '/profile'                => ['UserController', 'profile'],
+    '/profile/update'         => ['UserController', 'updateProfile'],
+];
+
+if (!isset($routes[$route])) {
+    http_response_code(404);
+    view('errors/404');
+    exit;
+}
+
+[$controllerName, $action] = $routes[$route];
+$controllerClass = $controllerName;
+$controller = new $controllerClass($auth);
+$controller->$action();

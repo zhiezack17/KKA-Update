@@ -1,0 +1,79 @@
+<?php $title = 'Sesi Audit - KKA'; ?>
+<?php partial('head', compact('title')); ?>
+<?php partial('sidebar'); ?>
+
+<main class="main" data-testid="page-sesi">
+  <div class="topbar">
+    <div class="crumb"><i class="fa-solid fa-clipboard-list"></i> <b>Sesi Audit KKA</b></div>
+    <div class="topbar-right"><?= count($sesi) ?> sesi</div>
+  </div>
+
+  <div class="content">
+    <?php partial('flash'); ?>
+
+    <div class="page-head">
+      <div>
+        <h2>Sesi Audit KKA</h2>
+        <p>Kertas Kerja Audit pengeluaran keuangan kepenghuluan.</p>
+      </div>
+      <a href="<?= url('sesi/create') ?>" class="btn btn-primary" data-testid="btn-sesi-baru">
+        <i class="fa-solid fa-plus"></i> Sesi Baru
+      </a>
+    </div>
+
+    <form method="get" class="filter-bar">
+      <input type="text" name="q" value="<?= e($q) ?>" placeholder="🔍 Cari objek audit / no. KKA..." class="input" data-testid="filter-sesi-q">
+      <select name="desa" class="select" data-testid="filter-sesi-desa">
+        <option value="0">— Semua Desa —</option>
+        <?php foreach ($desa as $d): ?><option value="<?= $d['id'] ?>" <?= $desaId==$d['id']?'selected':'' ?>><?= e($d['nama']) ?></option><?php endforeach; ?>
+      </select>
+      <select name="bidang" class="select">
+        <option value="0">— Semua Bidang —</option>
+        <?php foreach ($bidang as $b): ?><option value="<?= $b['id'] ?>" <?= $bidId==$b['id']?'selected':'' ?>><?= e(mb_strimwidth($b['nama'],0,42,'…')) ?></option><?php endforeach; ?>
+      </select>
+      <select name="tahun" class="select">
+        <option value="0">— Semua Tahun —</option>
+        <?php foreach ($tahuns as $t): ?><option value="<?= $t['t'] ?>" <?= $tahun==$t['t']?'selected':'' ?>><?= $t['t'] ?></option><?php endforeach; ?>
+      </select>
+      <button class="btn btn-outline btn-sm" type="submit"><i class="fa-solid fa-filter"></i> Filter</button>
+      <?php if ($q||$tahun||$desaId||$bidId): ?><a href="<?= url('sesi') ?>" class="btn btn-ghost btn-sm">Reset</a><?php endif; ?>
+    </form>
+
+    <?php if (empty($sesi)): ?>
+      <div class="empty">
+        <i class="fa-regular fa-folder-open"></i>
+        <h4>Belum ada sesi audit</h4>
+        <p>Klik tombol "Sesi Baru" untuk mulai membuat Kertas Kerja Audit.</p>
+      </div>
+    <?php else: ?>
+      <div class="list-grid">
+        <?php foreach ($sesi as $s): ?>
+          <div class="list-card" data-testid="sesi-item-<?= $s['id'] ?>">
+            <div class="ico"><i class="fa-solid fa-file-lines"></i></div>
+            <div class="main" onclick="window.location='<?= url('sesi/show?id='.$s['id']) ?>'" style="cursor:pointer">
+              <div class="title">
+                <?= e($s['objek_audit']) ?>
+                <span class="badge"><?= e($s['desa']) ?></span>
+                <span class="badge gold"><?= e(mb_strimwidth($s['bidang'],0,38,'…')) ?></span>
+              </div>
+              <div class="meta">
+                <span><i class="fa-regular fa-calendar"></i> Semester <?= (int)$s['semester'] ?> / <?= (int)$s['tahun_anggaran'] ?></span>
+                <span><i class="fa-solid fa-hashtag"></i> No. KKA: <?= e($s['no_kka'] ?: '-') ?></span>
+                <span><i class="fa-solid fa-user-tie"></i> <?= e($s['dibuat_oleh'] ?: '-') ?></span>
+              </div>
+            </div>
+            <div class="actions">
+              <a class="btn btn-outline btn-sm" href="<?= url('sesi/show?id='.$s['id']) ?>" title="Detail"><i class="fa-solid fa-eye"></i></a>
+              <form method="post" action="<?= url('sesi/delete') ?>" onsubmit="return confirm('Hapus sesi audit ini? Semua rincian & lampiran akan ikut terhapus.')" style="display:inline">
+                <?= csrf_field() ?><input type="hidden" name="id" value="<?= $s['id'] ?>">
+                <button class="btn btn-outline btn-sm" style="color:var(--red-600);border-color:#fecaca" title="Hapus" data-testid="del-sesi-<?= $s['id'] ?>"><i class="fa-solid fa-trash"></i></button>
+              </form>
+            </div>
+          </div>
+        <?php endforeach; ?>
+      </div>
+    <?php endif; ?>
+  </div>
+</main>
+
+<?php partial('foot'); ?>
