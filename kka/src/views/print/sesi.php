@@ -107,7 +107,7 @@
     </tr>
     <tr>
       <td class="lbl">Objek Audit</td><td class="sep">:</td><td class="val-left"><?= e($sesi['objek_audit']) ?></td>
-      <td class="lbl-r">Ref. KKA</td><td class="sep">:</td><td class="val-right"><?= e($sesi['ref_kka'] ?: '-') ?></td>
+      <td class="lbl-r">Ref. PKA</td><td class="sep">:</td><td class="val-right"><?= e($sesi['ref_kka'] ?: '-') ?></td>
     </tr>
     <tr>
       <td class="lbl">Masa Audit</td><td class="sep">:</td><td class="val-left">Semester <?= (int)$sesi['semester'] ?> Tahun <?= (int)$sesi['tahun_anggaran'] ?></td>
@@ -134,22 +134,24 @@
       <tr>
         <th style="width:22px">No</th>
         <th>Uraian / Rincian Belanja</th>
-        <th style="width:78px">Biaya Dikwitansi (Rp)</th>
+        <th style="width:80px">Pagu Anggaran (Rp)</th>
         <th style="width:78px">Realisasi (Rp)</th>
+        <th style="width:78px">Biaya Dikwitansi (Rp)</th>
         <th style="width:78px">Selisih (Rp)</th>
-        <th style="width:85px">Penerima</th>
-        <th style="width:95px">Keterangan</th>
+        <th style="width:80px">Penerima</th>
+        <th style="width:90px">Keterangan</th>
       </tr>
     </thead>
     <tbody>
       <?php if (empty($rincian)): ?>
-        <tr><td colspan="7" style="text-align:center;padding:20px;color:#666">- Belum ada rincian -</td></tr>
-      <?php else: $no=1; foreach ($rincian as $r): $sel=(float)$r['biaya_dikwitansi']-(float)$r['realisasi']; ?>
+        <tr><td colspan="8" style="text-align:center;padding:20px;color:#666">- Belum ada rincian -</td></tr>
+      <?php else: $no=1; $totPagu=0; foreach ($rincian as $r): $sel=(float)$r['realisasi']-(float)$r['biaya_dikwitansi']; $totPagu += (float)$r['pagu_anggaran']; ?>
         <tr>
           <td style="text-align:center"><?= $no++ ?></td>
           <td><?= e($r['uraian']) ?></td>
-          <td class="num"><?= number_format($r['biaya_dikwitansi'],0,',','.') ?></td>
+          <td class="num"><?= number_format($r['pagu_anggaran'],0,',','.') ?></td>
           <td class="num"><?= number_format($r['realisasi'],0,',','.') ?></td>
+          <td class="num"><?= number_format($r['biaya_dikwitansi'],0,',','.') ?></td>
           <td class="num"><?= number_format($sel,0,',','.') ?></td>
           <td><?= e($r['penerima'] ?: '-') ?></td>
           <td><?= e($r['keterangan'] ?: '-') ?></td>
@@ -160,9 +162,10 @@
     <tfoot>
       <tr>
         <td colspan="2" style="text-align:center">JUMLAH</td>
-        <td class="num"><?= number_format($totals['dikwitansi'],0,',','.') ?></td>
+        <td class="num"><?= number_format($totPagu ?? 0,0,',','.') ?></td>
         <td class="num"><?= number_format($totals['realisasi'],0,',','.') ?></td>
-        <td class="num"><?= number_format($totals['selisih'],0,',','.') ?></td>
+        <td class="num"><?= number_format($totals['dikwitansi'],0,',','.') ?></td>
+        <td class="num"><?= number_format((float)$totals['realisasi']-(float)$totals['dikwitansi'],0,',','.') ?></td>
         <td colspan="2"></td>
       </tr>
     </tfoot>

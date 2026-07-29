@@ -34,6 +34,9 @@ function nav_active($needle, $current) {
     <a href="<?= url('rekap') ?>" class="nav-item<?= nav_active('/rekap', $current) ?>" data-testid="nav-rekap">
       <i class="fa-solid fa-chart-column"></i><span>Rekap per Desa</span>
     </a>
+    <a href="<?= url('master') ?>" class="nav-item<?= nav_active('/master', $current) ?>" data-testid="nav-master">
+      <i class="fa-solid fa-folder-tree"></i><span>Master KKA</span>
+    </a>
     <?php if ($auth->isAdmin()): ?>
       <div class="nav-section">Admin</div>
       <a href="<?= url('users') ?>" class="nav-item<?= nav_active('/users', $current) ?>" data-testid="nav-users">

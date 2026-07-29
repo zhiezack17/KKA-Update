@@ -10,6 +10,7 @@
       <b><?= e(mb_strimwidth($sesi['objek_audit'],0,42,'…')) ?></b>
     </div>
     <div style="display:flex;gap:8px">
+      <a href="<?= url('sesi') ?>" class="btn btn-ghost btn-sm" data-testid="btn-back-sesi"><i class="fa-solid fa-arrow-left"></i> Kembali</a>
       <a href="<?= url('print/sesi?id='.$sesi['id']) ?>" class="btn btn-outline btn-sm" target="_blank" data-testid="btn-print"><i class="fa-solid fa-print"></i> Cetak / Preview</a>
       <a href="<?= url('export/sesi?id='.$sesi['id']) ?>" class="btn btn-accent btn-sm" data-testid="btn-export"><i class="fa-solid fa-file-excel"></i> Export Excel</a>
     </div>
@@ -31,7 +32,7 @@
         <h3 style="margin:0 0 12px;font-size:14px;font-weight:800;color:var(--slate-600);text-transform:uppercase;letter-spacing:1px">Identitas KKA</h3>
         <dl class="kv">
           <dt>No. KKA</dt>     <dd><?= e($sesi['no_kka'] ?: '-') ?></dd>
-          <dt>Ref. KKA</dt>    <dd><?= e($sesi['ref_kka'] ?: '-') ?></dd>
+          <dt>Ref. PKA</dt>    <dd><?= e($sesi['ref_kka'] ?: '-') ?></dd>
           <dt>Bidang</dt>      <dd><?= e($sesi['bidang_nama']) ?></dd>
           <dt>Sub Bidang</dt>  <dd><?= e($sesi['sub_bidang_nama'] ?: '-') ?></dd>
           <dt>Kegiatan</dt>    <dd><?= e($sesi['kegiatan'] ?: '-') ?></dd>
@@ -71,8 +72,9 @@
             <tr>
               <th style="width:36px">No</th>
               <th>Uraian / Rincian Belanja</th>
-              <th class="num">Biaya Dikwitansi</th>
+              <th class="num">Pagu Anggaran</th>
               <th class="num">Realisasi</th>
+              <th class="num">Biaya Dikwitansi</th>
               <th class="num">Selisih</th>
               <th>Penerima</th>
               <th>Keterangan</th>
@@ -81,20 +83,22 @@
           </thead>
           <tbody data-testid="tbody-rincian">
             <?php if (empty($rincian)): ?>
-              <tr><td colspan="8" style="text-align:center;color:var(--slate-500);padding:36px">Belum ada rincian. Tambahkan di formulir bawah.</td></tr>
-            <?php else: $no=1; foreach ($rincian as $r): $sel = (float)$r['biaya_dikwitansi'] - (float)$r['realisasi']; ?>
+              <tr><td colspan="9" style="text-align:center;color:var(--slate-500);padding:36px">Belum ada rincian. Tambahkan di formulir bawah.</td></tr>
+            <?php else: $no=1; $totPagu=0; foreach ($rincian as $r): $sel = (float)$r['realisasi'] - (float)$r['biaya_dikwitansi']; $totPagu += (float)$r['pagu_anggaran']; ?>
               <tr data-testid="rincian-row-<?= $r['id'] ?>"
                   data-rincian-id="<?= (int)$r['id'] ?>"
                   data-uraian="<?= e($r['uraian']) ?>"
+                  data-pagu="<?= (float)$r['pagu_anggaran'] ?>"
                   data-kwi="<?= (float)$r['biaya_dikwitansi'] ?>"
                   data-real="<?= (float)$r['realisasi'] ?>"
                   data-penerima="<?= e((string)$r['penerima']) ?>"
                   data-keterangan="<?= e((string)$r['keterangan']) ?>">
                 <td><?= $no++ ?></td>
                 <td><?= e($r['uraian']) ?></td>
-                <td class="num"><?= rupiah($r['biaya_dikwitansi']) ?></td>
+                <td class="num"><?= rupiah($r['pagu_anggaran']) ?></td>
                 <td class="num"><?= rupiah($r['realisasi']) ?></td>
-                <td class="num" style="color:<?= $sel>0?'var(--red-600)':'var(--emerald-700)' ?>;font-weight:700"><?= rupiah($sel) ?></td>
+                <td class="num"><?= rupiah($r['biaya_dikwitansi']) ?></td>
+                <td class="num" style="color:<?= $sel<0?'var(--red-600)':'var(--emerald-700)' ?>;font-weight:700"><?= rupiah($sel) ?></td>
                 <td><?= e($r['penerima'] ?: '-') ?></td>
                 <td><?= e($r['keterangan'] ?: '-') ?></td>
                 <td style="white-space:nowrap">
@@ -107,13 +111,14 @@
               </tr>
             <?php endforeach; endif; ?>
           </tbody>
-          <?php if (!empty($rincian)): ?>
+          <?php if (!empty($rincian)): $selTot = (float)$totals['realisasi']-(float)$totals['dikwitansi']; ?>
           <tfoot>
             <tr>
-              <td colspan="2">JUMLAH <span style="font-weight:500;color:var(--slate-500);font-size:12px">(Pagu: <?= rupiah($sesi['pagu_anggaran']) ?>)</span></td>
-              <td class="num"><?= rupiah($totals['dikwitansi']) ?></td>
+              <td colspan="2">JUMLAH <span style="font-weight:500;color:var(--slate-500);font-size:12px">(Pagu Sesi: <?= rupiah($sesi['pagu_anggaran']) ?>)</span></td>
+              <td class="num"><?= rupiah($totPagu ?? 0) ?></td>
               <td class="num"><?= rupiah($totals['realisasi']) ?></td>
-              <td class="num" style="color:<?= $totals['selisih']>0?'var(--red-600)':'var(--emerald-700)' ?>"><?= rupiah($totals['selisih']) ?></td>
+              <td class="num"><?= rupiah($totals['dikwitansi']) ?></td>
+              <td class="num" style="color:<?= $selTot<0?'var(--red-600)':'var(--emerald-700)' ?>"><?= rupiah($selTot) ?></td>
               <td colspan="3"></td>
             </tr>
           </tfoot>
@@ -125,10 +130,11 @@
       <form method="post" action="<?= url('rincian/store') ?>" style="padding:16px 18px;border-top:1px solid var(--slate-200);background:var(--slate-50)" data-testid="form-rincian">
         <?= csrf_field() ?>
         <input type="hidden" name="sesi_id" value="<?= $sesi['id'] ?>">
-        <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1.2fr 1.2fr auto;gap:8px;align-items:end">
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1.1fr 1.1fr auto;gap:8px;align-items:end">
           <div class="field" style="margin:0"><label>Uraian Belanja <span class="req">*</span></label><input type="text" name="uraian" required class="input" placeholder="cth: Pembayaran honor" data-testid="r-uraian"></div>
-          <div class="field" style="margin:0"><label>Dikwitansi</label><input type="text" name="biaya_dikwitansi" class="input" data-money placeholder="0"></div>
+          <div class="field" style="margin:0"><label>Pagu Anggaran</label><input type="text" name="pagu_anggaran" class="input" data-money placeholder="0" data-testid="r-pagu"></div>
           <div class="field" style="margin:0"><label>Realisasi</label><input type="text" name="realisasi" class="input" data-money placeholder="0" data-testid="r-realisasi"></div>
+          <div class="field" style="margin:0"><label>Dikwitansi</label><input type="text" name="biaya_dikwitansi" class="input" data-money placeholder="0"></div>
           <div class="field" style="margin:0"><label>Penerima</label><input type="text" name="penerima" class="input" placeholder="Nama penerima"></div>
           <div class="field" style="margin:0"><label>Keterangan</label><input type="text" name="keterangan" class="input" placeholder="-"></div>
           <button class="btn btn-primary" type="submit" data-testid="btn-tambah-rincian"><i class="fa-solid fa-plus"></i> Tambah</button>
@@ -229,14 +235,18 @@
           <label>Uraian Belanja <span class="req">*</span></label>
           <input type="text" name="uraian" id="er-uraian" required class="input" data-testid="er-uraian">
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
           <div class="field">
-            <label>Biaya Dikwitansi (Rp)</label>
-            <input type="text" name="biaya_dikwitansi" id="er-kwi" class="input" data-money placeholder="0" data-testid="er-kwi">
+            <label>Pagu Anggaran (Rp)</label>
+            <input type="text" name="pagu_anggaran" id="er-pagu" class="input" data-money placeholder="0" data-testid="er-pagu">
           </div>
           <div class="field">
             <label>Realisasi (Rp)</label>
             <input type="text" name="realisasi" id="er-real" class="input" data-money placeholder="0" data-testid="er-real">
+          </div>
+          <div class="field">
+            <label>Biaya Dikwitansi (Rp)</label>
+            <input type="text" name="biaya_dikwitansi" id="er-kwi" class="input" data-money placeholder="0" data-testid="er-kwi">
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -287,6 +297,7 @@
       if (!tr) return;
       document.getElementById('er-id').value        = tr.dataset.rincianId || '';
       document.getElementById('er-uraian').value    = tr.dataset.uraian || '';
+      document.getElementById('er-pagu').value      = fmt(tr.dataset.pagu);
       document.getElementById('er-kwi').value       = fmt(tr.dataset.kwi);
       document.getElementById('er-real').value      = fmt(tr.dataset.real);
       document.getElementById('er-penerima').value  = tr.dataset.penerima || '';

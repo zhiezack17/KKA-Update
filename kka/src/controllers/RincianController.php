@@ -26,7 +26,7 @@ class RincianController {
             'sesi_id'         => $sesiId,
             'urutan'          => $next,
             'uraian'          => $uraian,
-            'pagu_anggaran'   => 0,
+            'pagu_anggaran'   => parse_money(input('pagu_anggaran', 0)),
             'biaya_dikwitansi'=> parse_money(input('biaya_dikwitansi', 0)),
             'realisasi'       => parse_money(input('realisasi', 0)),
             'penerima'        => trim((string) input('penerima')) ?: null,
@@ -48,6 +48,7 @@ class RincianController {
         if ($uraian === '') { flash('error', 'Uraian belanja wajib diisi.'); redirect('sesi/show?id=' . $sesiId); }
         DB::update('kka_rincian', [
             'uraian'          => $uraian,
+            'pagu_anggaran'   => parse_money(input('pagu_anggaran', 0)),
             'biaya_dikwitansi'=> parse_money(input('biaya_dikwitansi', 0)),
             'realisasi'       => parse_money(input('realisasi', 0)),
             'penerima'        => trim((string) input('penerima')) ?: null,

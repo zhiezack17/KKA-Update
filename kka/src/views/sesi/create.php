@@ -77,7 +77,7 @@
             <input type="text" name="no_kka" class="input" placeholder="01/KKA/...">
           </div>
           <div class="field">
-            <label>Ref. KKA</label>
+            <label>Ref. PKA</label>
             <input type="text" name="ref_kka" class="input" placeholder="Ref...">
           </div>
         </div>

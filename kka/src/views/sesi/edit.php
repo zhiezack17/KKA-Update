@@ -52,7 +52,7 @@
         </div>
         <div class="row">
           <div class="field"><label>No. KKA</label><input type="text" name="no_kka" class="input" value="<?= e((string)$sesi['no_kka']) ?>"></div>
-          <div class="field"><label>Ref. KKA</label><input type="text" name="ref_kka" class="input" value="<?= e((string)$sesi['ref_kka']) ?>"></div>
+          <div class="field"><label>Ref. PKA</label><input type="text" name="ref_kka" class="input" value="<?= e((string)$sesi['ref_kka']) ?>"></div>
         </div>
         <div class="row">
           <div class="field"><label>Dibuat Oleh</label><input type="text" name="dibuat_oleh" class="input" value="<?= e((string)$sesi['dibuat_oleh']) ?>"></div>

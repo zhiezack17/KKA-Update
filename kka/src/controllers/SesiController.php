@@ -95,10 +95,11 @@ class SesiController {
 
         $totals = [
             'pagu'      => (float) $sesi['pagu_anggaran'],
+            'pagu_rinci'=> array_sum(array_column($rincian, 'pagu_anggaran')),
             'dikwitansi'=> array_sum(array_column($rincian, 'biaya_dikwitansi')),
             'realisasi' => array_sum(array_column($rincian, 'realisasi')),
         ];
-        $totals['selisih'] = $totals['dikwitansi'] - $totals['realisasi'];
+        $totals['selisih'] = $totals['realisasi'] - $totals['dikwitansi'];
 
         view('sesi/show', compact('sesi','rincian','lampiran','totals','sharedWith'));
     }
